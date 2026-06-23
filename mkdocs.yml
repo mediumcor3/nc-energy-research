@@ -5,4 +5,5 @@ theme:
 
 nav:
   - Home: index.md
-  - Map: map.html
+  - NC Existing Energy Production: map.html
+  - Proposed Utility Solar Sites: proposed.html
