@@ -1,0 +1,7 @@
+site_name: NC Energy Research
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
