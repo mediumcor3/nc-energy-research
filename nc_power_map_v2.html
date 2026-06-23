@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>North Carolina Power Stations Map</title>
+<style>
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f0f0ee;
+    --color-border-primary: #444;
+    --color-border-secondary: #ccc;
+    --color-border-tertiary: #ddd;
+    --color-text-secondary: #555;
+    --color-text-tertiary: #888;
+    --border-radius-md: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1a1a1a;
+      --color-background-secondary: #2a2a2a;
+      --color-border-primary: #aaa;
+      --color-border-secondary: #555;
+      --color-border-tertiary: #444;
+      --color-text-secondary: #bbb;
+      --color-text-tertiary: #888;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--color-background-primary);
+    color: #333;
+    padding: 20px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: #222; }
+  .subtitle { font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 16px; }
+  .legend-section { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; font-size: 12px; color: var(--color-text-secondary); align-items: center; }
+  .legend-label { font-weight: 500; font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .rect-swatch { display: inline-block; width: 14px; height: 10px; }
+  #tooltip {
+    position: fixed;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    max-width: 240px;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+  #map svg { display: block; width: 100%; }
+  .footnote { font-size: 11px; color: var(--color-text-tertiary); margin-top: 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>North Carolina Power Stations</h1>
+<p class="subtitle">Utility plants sized by capacity (MW) · Proposed utility solar · Estimated residential rooftop solar by county</p>
+
+<div class="legend-section">
+  <span class="legend-label">Utility plants</span>
+  <span class="legend-item"><span class="dot" style="background:#7F77DD"></span>Nuclear</span>
+  <span class="legend-item"><span class="dot" style="background:#888780"></span>Coal</span>
+  <span class="legend-item"><span class="dot" style="background:#EF9F27"></span>Natural Gas</span>
+  <span class="legend-item"><span class="dot" style="background:#1D9E75"></span>Hydro</span>
+  <span class="legend-item"><span class="dot" style="background:#639922"></span>Biomass</span>
+  <span class="legend-item"><span class="dot" style="background:#378ADD"></span>Wind</span>
+  <span class="legend-item"><span class="dot" style="background:#D85A30"></span>Utility Solar</span>
+</div>
+
+<div class="legend-section" style="margin-bottom:14px;">
+  <span class="legend-label">Other layers</span>
+  <span class="legend-item">
+    <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#00B386" stroke-width="2" stroke-dasharray="4 2"/></svg>
+    Proposed utility solar
+  </span>
+  <span class="legend-item">
+    <span class="rect-swatch" style="background:rgba(245,158,11,0.35);border:1px solid rgba(245,158,11,0.6);"></span>
+    Residential solar density
+    <span style="display:inline-flex;align-items:center;gap:2px;margin-left:4px;">
+      <span style="width:10px;height:8px;background:rgba(245,158,11,0.08);border:0.5px solid rgba(245,158,11,0.3);display:inline-block;"></span>
+      <span style="width:10px;height:8px;background:rgba(245,158,11,0.22);border:0.5px solid rgba(245,158,11,0.4);display:inline-block;"></span>
+      <span style="width:10px;height:8px;background:rgba(245,158,11,0.40);border:0.5px solid rgba(245,158,11,0.55);display:inline-block;"></span>
+      <span style="width:10px;height:8px;background:rgba(245,158,11,0.60);border:0.5px solid rgba(245,158,11,0.7);display:inline-block;"></span>
+      <span style="width:10px;height:8px;background:rgba(245,158,11,0.82);border:0.5px solid rgba(245,158,11,0.9);display:inline-block;"></span>
+      <span style="font-size:10px;margin-left:2px;">low → high</span>
+    </span>
+  </span>
+</div>
+
+<div id="tooltip"></div>
+<div id="map"></div>
+
+<p class="footnote">
+  County fill = estimated residential rooftop solar (MW). Circle area proportional to utility capacity (MW). Hover any element for details.<br>
+  Residential estimates based on population, median income, solar adoption rates, urban density, and NCSEA county-level reporting.<br>
+  Top counties: Wake ~48 MW · Mecklenburg ~42 MW · Durham ~20 MW · Forsyth ~15 MW · Guilford ~14 MW · Buncombe ~13 MW · New Hanover ~11 MW<br>
+  Sources: Wikipedia / NC Power Stations, NCSEA, SEIA, NC Clean Energy Technology Center. Map generated June 2026.
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const residentialMW = {
+  "Wake":48,"Mecklenburg":42,"Durham":20,"Forsyth":15,"Guilford":14,
+  "Buncombe":13,"New Hanover":11,"Orange":9,"Chatham":7,"Union":8,
+  "Cabarrus":7,"Iredell":7,"Johnston":6,"Brunswick":8,"Alamance":5,
+  "Gaston":5,"Catawba":5,"Davidson":5,"Rowan":4,"Randolph":4,
+  "Cumberland":5,"Moore":5,"Lee":4,"Harnett":4,"Pender":3,
+  "Lincoln":4,"Watauga":4,"Henderson":5,"Transylvania":3,"Jackson":2,
+  "Haywood":3,"Onslow":4,"Craven":4,"Carteret":4,"Dare":3,
+  "Pasquotank":2,"Currituck":2,"Camden":1,"Chowan":1,"Perquimans":1,
+  "Gates":1,"Hertford":1,"Bertie":1,"Northampton":1,"Halifax":2,
+  "Warren":1,"Vance":2,"Granville":3,"Franklin":4,"Nash":3,
+  "Wilson":3,"Pitt":4,"Lenoir":2,"Greene":1,"Wayne":3,"Duplin":2,
+  "Sampson":2,"Bladen":1,"Columbus":1,"Robeson":2,"Scotland":1,
+  "Richmond":1,"Montgomery":1,"Stanly":2,"Anson":1,"Rockingham":3,
+  "Stokes":1,"Surry":2,"Yadkin":1,"Davie":2,"Alexander":1,
+  "Wilkes":2,"Caldwell":2,"Burke":2,"Avery":1,"Mitchell":1,
+  "Yancey":1,"Madison":1,"Swain":1,"Graham":1,"Cherokee":1,
+  "Clay":1,"Macon":2,"Polk":1,"McDowell":2,"Rutherford":2,
+  "Cleveland":3,"Person":2,"Caswell":1,"Hoke":1,
+  "Edgecombe":2,"Martin":1,"Washington":1,"Tyrrell":1,"Hyde":1,
+  "Beaufort":2,"Pamlico":1,"Jones":1,
+};
+
+const existing = [
+  {name:"Brunswick Nuclear",lat:33.9583,lng:-78.0103,mw:1870,type:"Nuclear"},
+  {name:"McGuire Nuclear",lat:35.4325,lng:-80.9483,mw:2316,type:"Nuclear"},
+  {name:"Shearon Harris Nuclear",lat:35.6333,lng:-78.9550,mw:928,type:"Nuclear"},
+  {name:"Belews Creek Steam",lat:36.2811,lng:-80.0603,mw:2220,type:"Coal"},
+  {name:"James E. Rogers Energy Complex",lat:35.22,lng:-81.7594,mw:1388,type:"Coal"},
+  {name:"Marshall Steam Station",lat:35.5975,lng:-80.9658,mw:2058,type:"Coal"},
+  {name:"Mayo Plant",lat:36.5278,lng:-78.8917,mw:727,type:"Coal"},
+  {name:"Roxboro Steam Plant",lat:36.4833,lng:-79.0731,mw:2439,type:"Coal"},
+  {name:"Canton Mill Power Plant",lat:35.5350,lng:-82.8411,mw:52.5,type:"Coal"},
+  {name:"Sherwood H. Smith Jr. Energy Complex",lat:34.8392,lng:-79.7406,mw:1808,type:"Natural Gas"},
+  {name:"Lincoln Combustion Turbine",lat:35.4317,lng:-81.0347,mw:1200,type:"Natural Gas"},
+  {name:"Rockingham Station",lat:36.3297,lng:-79.8297,mw:825,type:"Natural Gas"},
+  {name:"Wayne County Plant",lat:35.3758,lng:-78.0981,mw:857,type:"Natural Gas"},
+  {name:"Rowan Plant",lat:35.7314,lng:-80.6019,mw:961,type:"Natural Gas"},
+  {name:"H.F. Lee Energy Complex",lat:35.3736,lng:-78.0894,mw:888,type:"Natural Gas"},
+  {name:"Cleveland Generating Plant",lat:35.1705,lng:-81.4166,mw:720,type:"Natural Gas"},
+  {name:"Buck Station",lat:35.7133,lng:-80.3767,mw:668,type:"Natural Gas"},
+  {name:"Dan River Station",lat:36.4862,lng:-79.7208,mw:662,type:"Natural Gas"},
+  {name:"Asheville Station",lat:35.4731,lng:-82.5417,mw:613,type:"Natural Gas"},
+  {name:"L.V. Sutton Plant",lat:34.2831,lng:-77.9852,mw:685,type:"Natural Gas"},
+  {name:"Anson County Generating Facility",lat:34.9686,lng:-79.9217,mw:340,type:"Natural Gas"},
+  {name:"Hamlet Generating Facility",lat:34.842,lng:-79.7360,mw:339,type:"Natural Gas"},
+  {name:"Butler-Warner Generation Plant",lat:35.0986,lng:-78.8294,mw:225,type:"Natural Gas"},
+  {name:"Kings Mountain Energy Center",lat:35.2025,lng:-81.3631,mw:486,type:"Natural Gas"},
+  {name:"Cowans Ford Hydro",lat:35.4346,lng:-80.9588,mw:324,type:"Hydro"},
+  {name:"Fontana Dam",lat:35.4507,lng:-83.805,mw:304,type:"Hydro"},
+  {name:"Gaston Hydro Station",lat:36.4991,lng:-77.8115,mw:220,type:"Hydro"},
+  {name:"Walters Hydroelectric Plant",lat:35.6946,lng:-83.0503,mw:112,type:"Hydro"},
+  {name:"Roanoke Rapids Power Station",lat:36.4789,lng:-77.6722,mw:95,type:"Hydro"},
+  {name:"Tillery Hydro Station",lat:35.2067,lng:-80.0648,mw:84,type:"Hydro"},
+  {name:"Mountain Island Hydro",lat:35.3342,lng:-80.9864,mw:60,type:"Hydro"},
+  {name:"Jordan Lake Hydro",lat:35.6549,lng:-79.0683,mw:4.4,type:"Hydro"},
+  {name:"Hiwassee Dam",lat:35.1509,lng:-84.1775,mw:95,type:"Hydro"},
+  {name:"Domtar Paper - Plymouth Mill",lat:35.8628,lng:-76.7831,mw:122.3,type:"Biomass"},
+  {name:"Craven County Wood Energy",lat:35.1302,lng:-77.1679,mw:47,type:"Biomass"},
+  {name:"International Paper - Riegelwood",lat:34.3533,lng:-78.2137,mw:52.3,type:"Biomass"},
+  {name:"International Paper - New Bern Mill",lat:35.2120,lng:-77.1144,mw:29,type:"Biomass"},
+  {name:"KapStone Kraft Paper",lat:36.4769,lng:-77.6414,mw:30,type:"Biomass"},
+  {name:"Lumberton",lat:34.5900,lng:-78.9968,mw:34.7,type:"Biomass"},
+  {name:"Desert Wind Farm",lat:36.31,lng:-76.42,mw:208,type:"Wind"},
+  {name:"Innovative Solar 37",lat:34.838,lng:-79.9439,mw:100,type:"Solar"},
+  {name:"Conetoe Solar I&II",lat:35.8220,lng:-77.4810,mw:85,type:"Solar"},
+  {name:"Aulander Holloman Solar",lat:36.2912,lng:-77.0666,mw:80,type:"Solar"},
+  {name:"Wilkinson Solar",lat:35.5968,lng:-76.7638,mw:80.6,type:"Solar"},
+  {name:"Gutenberg Solar",lat:36.4864,lng:-77.5348,mw:79.9,type:"Solar"},
+  {name:"Innovative Solar 46",lat:34.9182,lng:-78.9436,mw:78.5,type:"Solar"},
+  {name:"Chestnut Solar",lat:36.18,lng:-77.712,mw:75,type:"Solar"},
+  {name:"Pecan Solar",lat:36.4810,lng:-77.4812,mw:74.9,type:"Solar"},
+  {name:"Rutherford Farm Solar",lat:35.2578,lng:-81.8306,mw:74.8,type:"Solar"},
+  {name:"NC 102 Project",lat:35.2925,lng:-80.4975,mw:74.8,type:"Solar"},
+  {name:"Innovative Solar 42",lat:34.8476,lng:-78.8774,mw:71,type:"Solar"},
+  {name:"Crooked Run Solar",lat:34.6770,lng:-77.9775,mw:70.1,type:"Solar"},
+  {name:"Warsaw Farm Solar",lat:35.0056,lng:-78.1258,mw:65,type:"Solar"},
+  {name:"Shoe Creek Solar",lat:34.8450,lng:-79.3847,mw:65,type:"Solar"},
+  {name:"Ranchland Solar",lat:36.4726,lng:-76.1541,mw:60,type:"Solar"},
+  {name:"Summit Farms Solar",lat:36.4765,lng:-76.1360,mw:60,type:"Solar"},
+  {name:"Davidson Solar",lat:35.74917,lng:-80.29361,mw:17.2,type:"Solar"},
+];
+
+const proposed = [
+  {name:"Dare County Solar (proposed)",lat:35.9135,lng:-75.6754,mw:120,reason:"Highest GHI in state; flat coastal plain; near offshore wind transmission corridor"},
+  {name:"Hyde County Agri-Solar (proposed)",lat:35.5223,lng:-76.1534,mw:150,reason:"Premium irradiance; vast flat farmland adjacent to Pamlico Sound; near existing biomass grid"},
+  {name:"Tyrrell County Solar (proposed)",lat:35.8830,lng:-76.0022,mw:110,reason:"High irradiance; low land cost; agricultural watershed area"},
+  {name:"Washington County Solar (proposed)",lat:35.8447,lng:-76.6539,mw:95,reason:"Strong irradiance; existing grid from Plymouth biomass plant nearby"},
+  {name:"Beaufort County East (proposed)",lat:35.5136,lng:-76.6450,mw:130,reason:"Top-tier irradiance; flat terrain; proximity to existing transmission"},
+  {name:"Pamlico County Solar (proposed)",lat:35.1526,lng:-76.6831,mw:85,reason:"High GHI; near Craven County Wood Energy grid tie-in"},
+  {name:"Jones County Solar (proposed)",lat:34.9295,lng:-77.4308,mw:90,reason:"Consistently high irradiance; flat farmland; underserved grid region"},
+  {name:"Onslow County Solar (proposed)",lat:34.7540,lng:-77.4119,mw:105,reason:"High sun hours; large land near Camp Lejeune infrastructure"},
+  {name:"Duplin County Solar (proposed)",lat:34.9529,lng:-77.9270,mw:95,reason:"High irradiance; agricultural land; near Warsaw Farm Solar"},
+  {name:"Pender County Solar (proposed)",lat:34.5133,lng:-77.8970,mw:80,reason:"Near Brunswick Nuclear grid; strong eastern irradiance"},
+  {name:"Columbus County South (proposed)",lat:34.2175,lng:-78.6350,mw:100,reason:"Southern latitude boosts GHI; low land cost; near International Paper grid"},
+  {name:"Bladen County Solar (proposed)",lat:34.6128,lng:-78.5656,mw:115,reason:"Excellent irradiance; large flat plots; near Lumberton biomass grid"},
+  {name:"Robeson County East (proposed)",lat:34.6350,lng:-79.0275,mw:90,reason:"High sun hours; vast flat farmland; near HF Lee and Innovative Solar 46"},
+  {name:"Scotland County Solar (proposed)",lat:34.9025,lng:-79.5014,mw:85,reason:"Adjacent to Shoe Creek Solar — proven zone; strong GHI"},
+  {name:"Richmond County Solar (proposed)",lat:35.0526,lng:-79.7560,mw:95,reason:"Near Smith Energy Complex; grid capacity already built"},
+  {name:"Moore County Solar (proposed)",lat:35.3095,lng:-79.4730,mw:80,reason:"Stable Piedmont irradiance; large undeveloped land"},
+  {name:"Lee County Solar (proposed)",lat:35.4756,lng:-79.1721,mw:75,reason:"Near Shearon Harris grid; proven solar band"},
+  {name:"Johnston County Solar (proposed)",lat:35.5040,lng:-78.3318,mw:90,reason:"Strong eastern irradiance; flat agricultural land; underserved gap"},
+  {name:"Wilson County Solar (proposed)",lat:35.7354,lng:-77.9183,mw:85,reason:"Near Conetoe Solar II; agricultural floodplain gaps"},
+  {name:"Edgecombe County Solar (proposed)",lat:35.9020,lng:-77.5890,mw:90,reason:"Connects Conetoe and Aulander clusters; flat terrain"},
+  {name:"Martin County Solar (proposed)",lat:35.8610,lng:-77.1050,mw:100,reason:"Near Plymouth Domtar grid; very high eastern irradiance"},
+  {name:"Bertie County Solar (proposed)",lat:36.0620,lng:-77.0120,mw:110,reason:"Near Aulander Solar (proven); highest irradiance band"},
+  {name:"Hertford County Solar (proposed)",lat:36.3200,lng:-76.9780,mw:95,reason:"Adjacent to proven cluster; strong irradiance; grid access"},
+  {name:"Gates County Solar (proposed)",lat:36.4280,lng:-76.7710,mw:75,reason:"Near Roanoke Rapids hydro grid; good irradiance"},
+  {name:"Northampton County Solar (proposed)",lat:36.4200,lng:-77.9850,mw:85,reason:"Connects Mayo Plant grid to eastern solar belt"},
+  {name:"Vance County Solar (proposed)",lat:36.3620,lng:-78.4050,mw:70,reason:"Near Roxboro transmission; good Piedmont irradiance"},
+  {name:"Warren County Solar (proposed)",lat:36.3990,lng:-78.1130,mw:80,reason:"Near Gaston Hydro and Mayo Plant transmission corridors"},
+  {name:"Franklin County Solar (proposed)",lat:36.0780,lng:-78.2810,mw:75,reason:"Good irradiance; near Raleigh grid load center"},
+  {name:"Chatham County Solar (proposed)",lat:35.7030,lng:-79.2660,mw:70,reason:"Near Jordan Lake grid; large undeveloped acreage"},
+  {name:"Harnett County Solar (proposed)",lat:35.3570,lng:-78.8610,mw:80,reason:"Between Shearon Harris and HF Lee grids; good sun hours"},
+];
+
+const typeColors = {
+  "Nuclear":"#7F77DD","Coal":"#888780","Natural Gas":"#EF9F27",
+  "Hydro":"#1D9E75","Biomass":"#639922","Wind":"#378ADD","Solar":"#D85A30",
+};
+
+const tooltip = document.getElementById('tooltip');
+const W=900, H=520;
+const svg = d3.select('#map').append('svg')
+  .attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
+
+const projection = d3.geoAlbers()
+  .center([0,35.5]).rotate([79.5,0]).parallels([33.5,37.5])
+  .scale(6800).translate([W/2,H/2]);
+const path = d3.geoPath().projection(projection);
+const rScale = d3.scaleSqrt().domain([4,2439]).range([3,28]);
+const maxMW = 48;
+function fillOpacity(mw){ return 0.08 + 0.74*(Math.sqrt(mw)/Math.sqrt(maxMW)); }
+
+function showTip(event, html){
+  tooltip.style.display='block';
+  tooltip.innerHTML=html;
+  tooltip.style.left=(event.clientX+14)+'px';
+  tooltip.style.top=(event.clientY-10)+'px';
+}
+function hideTip(){ tooltip.style.display='none'; }
+
+Promise.all([
+  d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'),
+  d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json')
+]).then(([us, counties]) => {
+  const allStates = topojson.feature(us, us.objects.states);
+  const ncState = allStates.features.find(f=>f.properties.name==='North Carolina');
+  const allCounties = topojson.feature(counties, counties.objects.counties);
+  const ncCounties = allCounties.features.filter(f => f.id && String(f.id).startsWith('37'));
+
+  svg.append('path').datum(allStates).attr('d',path)
+    .attr('fill','var(--color-background-secondary)')
+    .attr('stroke','var(--color-border-tertiary)').attr('stroke-width',0.5);
+
+  svg.selectAll('path.county')
+    .data(ncCounties).join('path').attr('class','county')
+    .attr('d',path)
+    .attr('fill', d => {
+      const name = d.properties.name;
+      const mw = residentialMW[name] || 0;
+      return mw > 0 ? `rgba(245,158,11,${fillOpacity(mw).toFixed(3)})` : 'var(--color-background-primary)';
+    })
+    .attr('stroke','rgba(245,158,11,0.3)').attr('stroke-width',0.5)
+    .style('cursor','pointer')
+    .on('mousemove',(event,d)=>{
+      const name=d.properties.name||'';
+      const mw=residentialMW[name]||0;
+      showTip(event,`<strong style="font-size:13px;">${name} County</strong><br><span style="color:rgba(217,119,6,1);font-weight:500;">~${mw} MW residential solar</span><br><span style="color:var(--color-text-secondary);font-size:11px;">Estimated rooftop installations</span>`);
+    })
+    .on('mouseleave',hideTip);
+
+  if(ncState){
+    svg.append('path').datum(ncState).attr('d',path)
+      .attr('fill','none').attr('stroke','var(--color-border-primary)').attr('stroke-width',1.2);
+  }
+
+  [...existing].sort((a,b)=>b.mw-a.mw).forEach(d=>{
+    const p=projection([d.lng,d.lat]); if(!p) return;
+    svg.append('circle').attr('cx',p[0]).attr('cy',p[1]).attr('r',rScale(d.mw))
+      .attr('fill',typeColors[d.type]||'#888').attr('fill-opacity',0.82)
+      .attr('stroke','rgba(255,255,255,0.9)').attr('stroke-width',0.8).style('cursor','pointer')
+      .on('mousemove',ev=>showTip(ev,`<strong style="font-size:13px;">${d.name}</strong><br><span style="color:#555;">${d.type} · ${d.mw.toLocaleString()} MW</span>`))
+      .on('mouseleave',hideTip);
+  });
+
+  [...proposed].sort((a,b)=>b.mw-a.mw).forEach(d=>{
+    const p=projection([d.lng,d.lat]); if(!p) return;
+    svg.append('circle').attr('cx',p[0]).attr('cy',p[1]).attr('r',rScale(d.mw))
+      .attr('fill','none').attr('stroke','#00B386').attr('stroke-width',2)
+      .attr('stroke-dasharray','4 2').style('cursor','pointer')
+      .on('mousemove',ev=>showTip(ev,`<strong style="font-size:13px;">${d.name}</strong><br><span style="color:#00B386;font-weight:500;">Proposed · ${d.mw} MW est.</span><br><span style="color:#777;font-size:11px;margin-top:4px;display:block;">${d.reason}</span>`))
+      .on('mouseleave',hideTip);
+  });
+});
+</script>
+</body>
+</html>
