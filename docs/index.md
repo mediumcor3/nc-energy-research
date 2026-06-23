@@ -1,3 +1,4 @@
 # NC Energy Research
 
-Welcome to the site.
+Nothing to say just yet. 
+-Elvis
