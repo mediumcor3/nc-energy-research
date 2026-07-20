@@ -1,0 +1,31 @@
+<!--
+  WordPress embed for the solar financing tool.
+
+  Setup:
+    1. Deploy index.html to GitHub Pages (repo Settings -> Pages -> deploy from branch,
+       root folder). Confirm it loads at https://YOURUSERNAME.github.io/YOUR-REPO-NAME/
+    2. Replace YOURUSERNAME and YOUR-REPO-NAME below with the real values.
+    3. In WordPress, add a "Custom HTML" block (block editor) or paste into a Text
+       widget (classic editor) and drop this snippet in as-is.
+    4. Check the live height. The tool's content height changes with the number of
+       financing rows a visitor adds/removes, so 1600px is a starting estimate, not a
+       hard number:
+         - Fewer rows (default 5) or a smaller screen: ~1600-1800px is usually enough.
+         - Visitors who add several "+ Add option" rows will see extra scroll inside
+           the iframe unless you raise this value.
+       If you want the iframe to always fit its content exactly instead of guessing a
+       fixed height, that requires a small postMessage resize script between the page
+       and the iframe (not implemented here to keep the tool a single dependency-free
+       file) — flag it if that becomes worth the extra complexity.
+    5. When you set ALLOWED_ORIGIN on the Cloudflare Worker, use the GitHub Pages
+       origin (https://YOURUSERNAME.github.io), not the WordPress domain. The fetch()
+       calls to the Worker happen from inside index.html itself, so the browser's
+       Origin header reflects where index.html is hosted, regardless of which page
+       iframes it in.
+-->
+<iframe
+  src="https://YOURUSERNAME.github.io/YOUR-REPO-NAME/"
+  style="width:100%; height:1600px; border:none; display:block;"
+  title="Solar financing true cost comparison tool"
+  loading="lazy">
+</iframe>
